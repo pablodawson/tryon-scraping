@@ -28,6 +28,7 @@ for url in urls:
             
             if page.query_selector(button_path):
                 try:
+                    page.wait_for_selector(button_path)
                     page.click(button_path)
                 except:
                     print("No se pudo hacer click en el botón, saliendo")
