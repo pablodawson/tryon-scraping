@@ -17,29 +17,41 @@ for url in urls:
             # scroll hasta abajo
             while True:
                 previous_height = page.evaluate("document.body.scrollHeight")
-                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                page.evaluate("""
+                    let scrollHeight = document.body.scrollHeight;
+                    let scrollStep = scrollHeight / 100;
+                    let scrollInterval = setInterval(() => {
+                        window.scrollBy(0, scrollStep);
+                        if (window.scrollY + window.innerHeight >= scrollHeight) {
+                            clearInterval(scrollInterval);
+                        }
+                    }, 100);
+                """)
                 page.wait_for_timeout(2000)
                 new_height = page.evaluate("document.body.scrollHeight")
                 if new_height == previous_height:
                     break
             
             # apretar "cargar mas productos"
-            button_path = "//button[.//text()[contains(., 'Mostrar más')]]"
             
-            if page.query_selector(button_path):
-                try:
-                    page.wait_for_selector(button_path)
-                    page.click(button_path)
-                except:
+            button_path = "//button[.//text()[contains(., 'Mostrar más')]]"
+
+            try:
+                page.wait_for_selector(button_path, timeout=5000)
+            except:
                     print("No se pudo hacer click en el botón, saliendo")
                     break
+            
+            if page.query_selector(button_path):
+                page.click(button_path)
                 print("Cargando más productos...")
             else:
                 print("Llegamos al final")
                 break
         
         # Sacar todos los links de los productos
-        page.wait_for_selector('//*[@id="gallery-layout-container"]')
+        try:
+            page.wait_for_selector('//*[@id="gallery-layout-container"]')
         items = page.query_selector_all('//*[@id="gallery-layout-container"]/*')
         item_list = [item.inner_text() for item in items]
 
@@ -50,7 +62,7 @@ for url in urls:
                 garment_links.append(href)
         
         print(f"Se encontraron {len(garment_links)} links")
-    browser.close()
+        browser.close()
 
 
 # Save the links
