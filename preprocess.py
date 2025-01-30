@@ -105,8 +105,13 @@ for i, root in tqdm.tqdm(enumerate(os.listdir(raw_data_path)), total=len(os.list
             model_images.append(image)
         
         elif torch.tensor(0.0) in boxes.cls:
-            
-            area = boxes.xywh[:, 2] * boxes.xywh[:, 3]
+
+            if boxes.cls.numel() > 1:
+                garment_idx = ((boxes.cls == 0.0) | (boxes.cls == 1.0)).nonzero().squeeze()
+                area = boxes[garment_idx].xywh[:, 2] * boxes[garment_idx].xywh[:, 3]
+            else:
+                area = boxes.xywh[:, 2] * boxes.xywh[:, 3]
+
             if area < smallest_area:
                 smallest_area = area
                 smallest_area_image = image
