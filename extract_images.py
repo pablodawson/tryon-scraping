@@ -6,7 +6,7 @@ import json
 import aiohttp
 import time
 
-product_urls = open("product_urls.txt").readlines()[882:]
+product_urls = open("product_urls.txt").readlines()[3996:]
 dataset_path = "hm_dataset"
 os.makedirs(dataset_path, exist_ok=True)
 
@@ -44,66 +44,70 @@ async def scrape_images():
         page = await browser.new_page()
         
         for url in product_urls:
-            url = url.strip()
-            await page.goto(url)
-
-            subproducts_selector = "#__next > main > div.rOGz > div > div > div:nth-child(2) > div > div > div.fe4979 > section > div.ff18ac.ab7eab > div"
-
-            # Wait for the subproducts to load
             try:
-                soup = await asyncio.wait_for(wait_for_selector_soup(page, [subproducts_selector]), timeout=30)
-            except asyncio.TimeoutError:
-                print(f"Timeout while waiting for subproducts on {url}")
-                continue
+                url = url.strip()
+                await page.goto(url)
 
-            subproducts_container = soup.select(subproducts_selector)
-            subproducts = subproducts_container[0].find_all('a')
-            
-            for subproduct in subproducts:
-                timestart = time.time()
+                subproducts_selector = "#__next > main > div.rOGz > div > div > div:nth-child(2) > div > div > div.fe4979 > section > div.ff18ac.ab7eab > div"
 
-                url = subproduct['href']
-                await page.goto("https://www2.hm.com" + url)
-                sku = url.split(".")[-2]
-
-                output_folder = os.path.join(dataset_path, sku)
-                os.makedirs(output_folder, exist_ok=True)
-
-                product_info = {}
-
-                images_selector = "#__next > main > div.rOGz > div > div > div.c58e1c.e218ea.ce69b3.b1d39a.c9ee6e > div > ul"
-                color_selector = "#__next > main > div.rOGz > div > div > div:nth-child(2) > div > div > div.fe4979 > section > label"
-                description_selector = "#section-descriptionAccordion > div > div > p"
-                features_selector = "#section-descriptionAccordion > div > div > dl"
-
+                # Wait for the subproducts to load
                 try:
-                    soup = await asyncio.wait_for(wait_for_selector_soup(page, [images_selector, color_selector, description_selector, features_selector]), timeout=30)
+                    soup = await asyncio.wait_for(wait_for_selector_soup(page, [subproducts_selector]), timeout=30)
                 except asyncio.TimeoutError:
-                    print(f"Timeout while waiting for product details on {url}")
+                    print(f"Timeout while waiting for subproducts on {url}")
                     continue
 
-                images_container = soup.select(images_selector)
-                images = images_container[0].find_all('li')
+                subproducts_container = soup.select(subproducts_selector)
+                subproducts = subproducts_container[0].find_all('a')
+                
+                for subproduct in subproducts:
+                    timestart = time.time()
 
-                product_info["title"] = soup.select("h1")[0].contents[0]
-                product_info["color"] = soup.select(color_selector)[0].contents[0]
-                product_info["description"] = soup.select(description_selector)[0].contents[0]
-                
-                features = soup.select(features_selector)[0].find_all("div")
-                
-                for feature in features:
-                    key = feature.select("dt")[0].contents[0]
-                    value = feature.select("dd")[0].contents[0]
+                    url = subproduct['href']
+                    await page.goto("https://www2.hm.com" + url)
+                    sku = url.split(".")[-2]
 
-                    if key not in ["Imported: ", "Concept: "]:
-                        product_info[key] = value
-                
-                with open(os.path.join(output_folder, "info.json"), "w") as info_file:
-                    json.dump(product_info, info_file)
-                
-                await download_images(images, output_folder)
+                    output_folder = os.path.join(dataset_path, sku)
+                    os.makedirs(output_folder, exist_ok=True)
 
-                print(f"{sku}: {time.time()-timestart} seconds")
+                    product_info = {}
+
+                    images_selector = "#__next > main > div.rOGz > div > div > div.c58e1c.e218ea.ce69b3.b1d39a.c9ee6e > div > ul"
+                    color_selector = "#__next > main > div.rOGz > div > div > div:nth-child(2) > div > div > div.fe4979 > section > label"
+                    description_selector = "#section-descriptionAccordion > div > div > p"
+                    features_selector = "#section-descriptionAccordion > div > div > dl"
+
+                    try:
+                        soup = await asyncio.wait_for(wait_for_selector_soup(page, [images_selector, color_selector, description_selector, features_selector]), timeout=30)
+                    except asyncio.TimeoutError:
+                        print(f"Timeout while waiting for product details on {url}")
+                        continue
+
+                    images_container = soup.select(images_selector)
+                    images = images_container[0].find_all('li')
+
+                    product_info["title"] = soup.select("h1")[0].contents[0]
+                    product_info["color"] = soup.select(color_selector)[0].contents[0]
+                    product_info["description"] = soup.select(description_selector)[0].contents[0]
+                    
+                    features = soup.select(features_selector)[0].find_all("div")
+                    
+                    for feature in features:
+                        key = feature.select("dt")[0].contents[0]
+                        value = feature.select("dd")[0].contents[0]
+
+                        if key not in ["Imported: ", "Concept: "]:
+                            product_info[key] = value
+                    
+                    with open(os.path.join(output_folder, "info.json"), "w") as info_file:
+                        json.dump(product_info, info_file)
+                    
+                    await download_images(images, output_folder)
+
+                    print(f"{sku}: {time.time()-timestart} seconds")
+            except(Exception) as e:
+                print(f"Error while scraping {url}: {e}")
+                continue
         
         await browser.close()
 
