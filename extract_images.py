@@ -6,7 +6,7 @@ import json
 import aiohttp
 import time
 
-product_urls = open("product_urls.txt").readlines()[3996:]
+product_urls = open("product_urls.txt").readlines()[7400:]
 dataset_path = "hm_dataset"
 os.makedirs(dataset_path, exist_ok=True)
 
@@ -46,6 +46,14 @@ async def scrape_images():
         for url in product_urls:
             try:
                 url = url.strip()
+
+                # Check duplicate
+                sku = url.split(".")[-2]
+                output_folder = os.path.join(dataset_path, sku)
+                if os.path.exists(os.path.join(output_folder, "info.json")):
+                    print(f"Already processed {url}")
+                    continue
+
                 await page.goto(url)
 
                 subproducts_selector = "#__next > main > div.rOGz > div > div > div:nth-child(2) > div > div > div.fe4979 > section > div.ff18ac.ab7eab > div"
@@ -66,6 +74,11 @@ async def scrape_images():
                     url = subproduct['href']
                     await page.goto("https://www2.hm.com" + url)
                     sku = url.split(".")[-2]
+
+                    output_folder = os.path.join(dataset_path, sku)
+                    if os.path.exists(os.path.join(output_folder, "info.json")):
+                        print(f"Already processed {url}")
+                        continue
 
                     output_folder = os.path.join(dataset_path, sku)
                     os.makedirs(output_folder, exist_ok=True)
@@ -111,4 +124,5 @@ async def scrape_images():
         
         await browser.close()
 
-asyncio.run(scrape_images())
+if __name__ == "__main__":
+    asyncio.run(scrape_images())
